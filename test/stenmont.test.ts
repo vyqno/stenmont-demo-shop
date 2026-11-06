@@ -4,7 +4,7 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { OrderStore } from '../lib/orders.ts';
 import { quote, fingerprint, signature } from '../lib/commerce.ts';
-import { acceptStenmontWebhook, createStenmontInvoice, stenmontEnabled } from '../lib/stenmont.ts';
+import { acceptStenmontWebhook, createStenmontInvoice, stenmontEnabled, reconcileStenmontInvoice } from '../lib/stenmont.ts';
 const invoiceId='0x'+'ab'.repeat(32),tx='0x'+'cd'.repeat(32),now=1793970000;
 function database(){const sql=new DatabaseSync(':memory:');for(const f of ['0001_shop.sql','0002_shop_limits.sql','0003_stenmont_orders.sql'])sql.exec(readFileSync(new URL('../migrations/'+f,import.meta.url),'utf8'));const db:any={prepare(text:string){let values:any[]=[];return {bind(...v:any[]){values=v;return this;},async first(){return sql.prepare(text).get(...values)??null;},async all(){return {results:sql.prepare(text).all(...values)};},async run(){const r=sql.prepare(text).run(...values);return {meta:{changes:Number(r.changes)}};}};},async batch(stmts:any[]){sql.exec('BEGIN');try{const a=[];for(const s of stmts)a.push(await s.run());sql.exec('COMMIT');return a;}catch(e){sql.exec('ROLLBACK');throw e;}}};return new OrderStore(db);}
 const FIELDWORK_MERCHANT_ID='m_1ec90bb421cce5b2';
@@ -66,4 +66,30 @@ test('other403,5xx and invalid responses remain held rather than rearmed',async(
   assert.ok((await createStenmontInvoice(o,env,store,transport)).status>=400);
   assert.equal((await store.get(o.id,'owner'))?.status,'submitting');assert.equal((await createStenmontInvoice((await store.get(o.id,'owner'))!,env,store,transport)).status,202);assert.equal(calls,1);
  }
+});
+
+test('a held order reconciles only an existing matching invoice through a read request',async()=>{
+ const store=database(),o=await order(store);await store.claimCreation(o.id);let calls=0;
+ const current={id:invoiceId,payUrl:`https://app-staging.stenmont.com/pay/${invoiceId}`,successUrl:`https://demo-shop-staging.stenmont.com/orders/${o.id}`,currency:'USDT',amount:'1.00',status:'open',metadata:{order:o.id,merchant:env.STENMONT_MERCHANT_ID}};
+ const read:typeof fetch=async(url,init)=>{calls++;assert.equal(init?.method,'GET');assert.equal(url,env.STENMONT_API_URL+'/v1/invoices/'+invoiceId);return Response.json(current);};
+ const response=await reconcileStenmontInvoice((await store.get(o.id,'owner'))!,invoiceId,env,store,read);assert.equal(response.status,200);assert.equal(calls,1);assert.equal((await store.get(o.id,'owner'))?.invoiceId,invoiceId);assert.equal((await store.get(o.id,'owner'))?.status,'awaiting_payment');
+ assert.equal((await store.db.prepare('SELECT remaining FROM stock WHERE sku=?').bind('folio-a5-ink').first<any>()).remaining,19);
+});
+test('reconciliation rejects a wrong order, merchant, amount or return URL without changing the hold',async()=>{
+ for(const change of [{metadata:{order:'other',merchant:env.STENMONT_MERCHANT_ID}},{metadata:{order:'unused',merchant:'m_ff'}},{amount:'0.01'},{successUrl:'https://other.example/receipt'}]){
+  const store=database(),o=await order(store);await store.claimCreation(o.id);const current={id:invoiceId,payUrl:`https://app-staging.stenmont.com/pay/${invoiceId}`,successUrl:`https://demo-shop-staging.stenmont.com/orders/${o.id}`,currency:'USDT',amount:'1',status:'open',metadata:{order:o.id,merchant:env.STENMONT_MERCHANT_ID},...change};
+  const response=await reconcileStenmontInvoice((await store.get(o.id,'owner'))!,invoiceId,env,store,async()=>Response.json(current));assert.equal(response.status,409);assert.equal((await store.get(o.id,'owner'))?.invoiceId,null);assert.equal((await store.get(o.id,'owner'))?.status,'submitting');
+ }
+});
+test('upstream diagnostics expose only allowlisted status and error classes, never body or exception secrets',async()=>{
+ const store=database(),o=await order(store);await store.claimCreation(o.id);
+ const secret='fixture-credential-must-not-leak';
+ const denied=await reconcileStenmontInvoice((await store.get(o.id,'owner'))!,invoiceId,env,store,async()=>Response.json({error:{code:secret,message:secret}},{status:401}));
+ const data=await denied.json();assert.deepEqual(data.diagnostic,{stage:'api_http',status:401,code:'other'});assert.ok(!JSON.stringify(data).includes(secret));
+ const exception=await reconcileStenmontInvoice((await store.get(o.id,'owner'))!,invoiceId,env,store,async()=>{throw new TypeError('Illegal invocation '+secret);});const detail=await exception.json();assert.deepEqual(detail.diagnostic,{stage:'api_fetch',reason:'native_fetch_context'});assert.ok(!JSON.stringify(detail).includes(secret));
+});
+test('default outbound transport preserves the native global fetch receiver',async()=>{
+ const store=database(),o=await order(store),original=globalThis.fetch;let calls=0;
+ globalThis.fetch=function(this:unknown,_input:Parameters<typeof fetch>[0],_init?:Parameters<typeof fetch>[1]){assert.equal(this,globalThis);calls++;return Promise.resolve(Response.json({id:invoiceId,payUrl:`https://app-staging.stenmont.com/pay/${invoiceId}`}));};
+ try{assert.equal((await createStenmontInvoice(o,env,store)).status,200);assert.equal(calls,1);}finally{globalThis.fetch=original;}
 });

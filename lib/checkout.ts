@@ -1,3 +1,4 @@
+import { runtimeFetch } from './http.ts';
 import { quote, fingerprint, verifySignature, verifyCaptured } from './commerce.ts';
 import type { OrderStore, Database } from './orders.ts';
 import { RateLimitError,requestIp } from './guards.ts';
@@ -9,7 +10,7 @@ export async function boundedText(request:Request,limit:number){
  const reader=request.body?.getReader();if(!reader)return '';let bytes=0,out='';const decoder=new TextDecoder();
  try{for(;;){const {value,done}=await reader.read();if(done)break;bytes+=value.length;if(bytes>limit){await reader.cancel();throw Error('Body too large.');}out+=decoder.decode(value,{stream:true});}return out+decoder.decode();}finally{reader.releaseLock();}
 }
-export async function startCheckout(request:Request,owner:string|null,env:ShopEnv,store:OrderStore,fetcher:typeof fetch=fetch){
+export async function startCheckout(request:Request,owner:string|null,env:ShopEnv,store:OrderStore,fetcher:typeof fetch=runtimeFetch){
  if(request.headers.get('origin')!==new URL(request.url).origin)return json('Checkout must start from this shop.',403);
  if(!owner)return json('Open your basket again to start a private session.',401);
  let data:any;try{data=JSON.parse(await boundedText(request,8000));}catch{return json('Invalid checkout body.',400);}
