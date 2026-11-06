@@ -1,0 +1,10 @@
+export function ProductArt({kind,className=''}:{kind:string;className?:string}){
+ return <svg className={className} viewBox="0 0 500 420" role="img" aria-label={`${kind} product illustration`}><rect width="500" height="420" fill="#ebe7df"/>
+ <ellipse cx="258" cy="350" rx="125" ry="15" fill="#d8d2c7"/>
+ {kind==='notebook'?<g transform="rotate(-12 250 210)"><rect x="140" y="65" width="218" height="290" rx="8" fill="#252a25"/><path d="M155 65v290" stroke="#929685" strokeWidth="3"/><path d="M345 75v270" stroke="#d6d1bf" strokeWidth="8"/><text x="185" y="150" fill="#eee9dc" fontSize="20" fontFamily="serif">FIELD NOTES</text><path d="M187 176h114" stroke="#999f8a"/></g>:
+ kind==='pen'?<g transform="rotate(35 250 210)"><rect x="231" y="58" width="35" height="272" rx="16" fill="#9b8051"/><rect x="231" y="62" width="35" height="90" rx="10" fill="#b39a6c"/><path d="M249 329l-10 24h20z" fill="#4b4b45"/><path d="M258 77v73" stroke="#e0cba4" strokeWidth="4"/></g>:
+ kind==='tray'?<g><path d="M110 167l246-20 40 143-257 22z" fill="#b3bab0"/><path d="M125 176l220-17 29 118-228 20z" fill="#d2d7ce"/><path d="M139 312l-29-145 15 9 21 121 228-20 22 13z" fill="#8b9489"/><path d="M185 240l98-17" stroke="#756449" strokeWidth="12" strokeLinecap="round"/></g>:
+ kind==='case'?<g transform="rotate(-8 250 210)"><rect x="110" y="110" width="280" height="210" rx="30" fill="#b7a78c"/><path d="M125 141h252" stroke="#665e4d" strokeWidth="5"/><path d="M140 306h218" stroke="#8e8068" strokeDasharray="5 5"/><rect x="356" y="135" width="12" height="30" rx="3" fill="#4d5146"/><text x="198" y="225" fill="#4d5146" fontSize="19" fontFamily="serif">fieldwork</text></g>:
+ <g transform="rotate(-9 250 210)"><rect x="110" y="110" width="280" height="220" rx="3" fill="#c7c0b1"/><rect x="100" y="98" width="280" height="220" rx="3" fill="#f9f6ec"/>{kind==='pad'?<g stroke="#c3c1b5"><path d="M120 145h240M120 185h240M120 225h240M120 265h240M180 125v170M240 125v170M300 125v170"/></g>:<g><path d="M130 160h170M130 180h200M130 200h125" stroke="#a9afa0"/><text x="130" y="270" fill="#42483f" fontSize="18" fontFamily="serif">ONE THOUGHT AT A TIME</text></g>}</g>}
+ </svg>;
+}

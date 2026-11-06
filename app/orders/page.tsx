@@ -1,0 +1,4 @@
+'use client';
+import { useEffect,useState } from 'react';
+import Link from 'next/link';
+export default function Orders(){const [ids,setIds]=useState<string[]|null>(null);useEffect(()=>{try{const values=JSON.parse(localStorage.getItem('fieldwork.orders')??'[]');setIds(Array.isArray(values)?values.filter(v=>typeof v==='string'&&/^[a-f0-9-]{36}$/.test(v)):[]);}catch{setIds([]);}},[]);return <section className="copy-page"><p className="eyebrow">KEPT FOR YOUR RECORDS</p><h1>Your orders.</h1>{ids===null?<p role="status">Loading…</p>:ids.length?<ul className="order-links">{ids.map(id=><li key={id}><Link href={`/orders/${id}`}>Order {id.slice(0,8)} ↗</Link></li>)}</ul>:<p>No orders have been saved on this browser.</p>}<p className="fine">Private order details require the original browser session. Clearing cookies removes access; these links alone grant no access.</p><Link href="/#collection">Explore the collection ↗</Link></section>;}
