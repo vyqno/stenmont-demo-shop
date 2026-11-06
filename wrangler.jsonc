@@ -13,6 +13,6 @@
     "routes":[{"pattern":"demo-shop-staging.stenmont.com","custom_domain":true}],
     "assets":{"directory":".open-next/assets","binding":"ASSETS"},
     "vars":{"ENVIRONMENT":"staging"},
-    "d1_databases":[{"binding":"DB","database_name":"stenmont-demo-shop-staging","database_id":"00000000-0000-0000-0000-000000000000","migrations_dir":"migrations"}]
+    "d1_databases":[{"binding":"DB","database_name":"stenmont-demo-shop-staging","database_id":"16d5b4a7-36d9-47be-ab5a-c602d3909f6d","migrations_dir":"migrations"}]
   }}
 }
