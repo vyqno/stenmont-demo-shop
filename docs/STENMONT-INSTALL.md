@@ -14,7 +14,7 @@ Creation allows60seconds for chain confirmation. A saved invoice and pay URL are
 
 ## Configuration, lead only
 
-Apply `0003_stenmont_orders.sql` on the isolated demo staging database before deploying this code. Set `STENMONT_API_URL` to the staging API as a non-secret Worker variable. Secret values belong only in Cloudflare Secrets: `STENMONT_API_KEY`, `STENMONT_WEBHOOK_SECRET`. The names-only `.env.example` contains no values; the copied prompt's general dotenv suggestion is overridden by the owner's Cloudflare-only rule.
+Apply `0003_stenmont_orders.sql` on the isolated demo staging database before deploying this code. Set `STENMONT_API_URL` to the staging API and `STENMONT_MERCHANT_ID` to the matching merchant id as non-secret Worker variables. Merchant ids must match m_ followed by lowercase hexadecimal; missing or malformed configuration fails closed. The API key, saved order merchant and signed webhook metadata must describe that configured merchant. Secret values belong only in Cloudflare Secrets: `STENMONT_API_KEY`, `STENMONT_WEBHOOK_SECRET`. The names-only `.env.example` contains no values; the copied prompt's general dotenv suggestion is overridden by the owner's Cloudflare-only rule.
 
 `STENMONT_CHECKOUT_ENABLED=yes` explicitly enables the USDT option after review. It is separate from Razorpay's `CHECKOUT_ENABLED`; both default off. Production is refused. Disabling creation does not discard a legitimate signed paid webhook.
 

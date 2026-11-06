@@ -4,10 +4,11 @@ import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { OrderStore } from '../lib/orders.ts';
 import { quote, fingerprint, signature } from '../lib/commerce.ts';
-import { acceptStenmontWebhook, createStenmontInvoice, FIELDWORK_MERCHANT_ID } from '../lib/stenmont.ts';
+import { acceptStenmontWebhook, createStenmontInvoice, stenmontEnabled } from '../lib/stenmont.ts';
 const invoiceId='0x'+'ab'.repeat(32),tx='0x'+'cd'.repeat(32),now=1793970000;
 function database(){const sql=new DatabaseSync(':memory:');for(const f of ['0001_shop.sql','0002_shop_limits.sql','0003_stenmont_orders.sql'])sql.exec(readFileSync(new URL('../migrations/'+f,import.meta.url),'utf8'));const db:any={prepare(text:string){let values:any[]=[];return {bind(...v:any[]){values=v;return this;},async first(){return sql.prepare(text).get(...values)??null;},async all(){return {results:sql.prepare(text).all(...values)};},async run(){const r=sql.prepare(text).run(...values);return {meta:{changes:Number(r.changes)}};}};},async batch(stmts:any[]){sql.exec('BEGIN');try{const a=[];for(const s of stmts)a.push(await s.run());sql.exec('COMMIT');return a;}catch(e){sql.exec('ROLLBACK');throw e;}}};return new OrderStore(db);}
-const env:any={ENVIRONMENT:'staging',STENMONT_CHECKOUT_ENABLED:'yes',STENMONT_API_URL:'https://api-staging.stenmont.com',STENMONT_API_KEY:'fixture-only',STENMONT_WEBHOOK_SECRET:'fixture-webhook'};
+const FIELDWORK_MERCHANT_ID='m_1ec90bb421cce5b2';
+const env:any={STENMONT_MERCHANT_ID:FIELDWORK_MERCHANT_ID,ENVIRONMENT:'staging',STENMONT_CHECKOUT_ENABLED:'yes',STENMONT_API_URL:'https://api-staging.stenmont.com',STENMONT_API_KEY:'fixture-only',STENMONT_WEBHOOK_SECRET:'fixture-webhook'};
 async function order(store:OrderStore){const q=quote([{sku:'folio-a5-ink',quantity:1}],'stenmont');return store.create('owner','saved-browser-key',await fingerprint(q),q);}
 const event=(orderId:string,changes:Record<string,unknown>={})=>({id:'evt-fixture',type:'invoice.paid',created:now,livemode:false,data:{invoice:{id:invoiceId,status:'paid',currency:'USDT',amount:'1',amountPaid:'1',metadata:{order:orderId,merchant:FIELDWORK_MERCHANT_ID},...changes},payment:{txHash:tx,value:'1'}}});
 async function request(payload:unknown,t=now,rotate=false){const raw=JSON.stringify(payload),sig=await signature(`${t}.${raw}`,'fixture-webhook');return new Request('https://demo-shop-staging.stenmont.com/api/webhooks/stenmont',{method:'POST',headers:{'Stenmont-Signature':`t=${t},${rotate?'v1='+ '00'.repeat(32)+',':''}v1=${sig}`},body:raw});}
@@ -41,4 +42,12 @@ test('an uncertain Stenmont send stays bound to its owned order and is never res
  const store=database(),o=await order(store);let calls=0;const lost:typeof fetch=async()=>{calls++;throw Error('fixture receipt timeout');};
  const first=await createStenmontInvoice(o,env,store,lost);assert.equal(first.status,502);assert.equal((await first.json()).id,o.id);
  const retry=await createStenmontInvoice((await store.get(o.id,'owner'))!,env,store,lost);assert.equal(retry.status,202);assert.equal((await retry.json()).id,o.id);assert.equal(calls,1);
+});
+
+test('merchant binding is configurable and missing or malformed merchant config fails closed',async()=>{
+ const store=database(),o=await order(store),merchant='m_'+ '34'.repeat(8);const configured={...env,STENMONT_MERCHANT_ID:merchant};let called=0;
+ const transport:typeof fetch=async(_url,init)=>{called++;assert.equal(JSON.parse(init!.body as string).metadata.merchant,merchant);return Response.json({id:invoiceId,payUrl:`https://app-staging.stenmont.com/pay/${invoiceId}`});};
+ for(const value of [undefined,'','foreign','m_invalid']){assert.equal(stenmontEnabled({...env,STENMONT_MERCHANT_ID:value}),false);assert.equal((await createStenmontInvoice(o,{...env,STENMONT_MERCHANT_ID:value},store,transport)).status,503);}
+ assert.equal(called,0);assert.equal((await createStenmontInvoice(o,configured,store,transport)).status,200);assert.equal((await store.get(o.id,'owner'))?.merchantId,merchant);assert.equal((await createStenmontInvoice((await store.get(o.id,'owner'))!,env,store,transport)).status,409);
+ const paid=event(o.id,{metadata:{order:o.id,merchant}});assert.equal((await acceptStenmontWebhook(await request(paid),configured,store,now)).status,200);assert.equal((await store.get(o.id,'owner'))?.status,'paid');
 });

@@ -2,7 +2,7 @@ import { quote, fingerprint, verifySignature, verifyCaptured } from './commerce.
 import type { OrderStore, Database } from './orders.ts';
 import { RateLimitError,requestIp } from './guards.ts';
 import { createStenmontInvoice,stenmontEnabled } from './stenmont.ts';
-export type ShopEnv={ENVIRONMENT:string;DB:Database;CHECKOUT_ENABLED?:string;STENMONT_CHECKOUT_ENABLED?:string;STENMONT_API_URL?:string;STENMONT_API_KEY?:string;STENMONT_WEBHOOK_SECRET?:string;RAZORPAY_KEY_ID?:string;RAZORPAY_KEY_SECRET?:string;RAZORPAY_WEBHOOK_SECRET?:string};
+export type ShopEnv={ENVIRONMENT:string;DB:Database;CHECKOUT_ENABLED?:string;STENMONT_CHECKOUT_ENABLED?:string;STENMONT_API_URL?:string;STENMONT_MERCHANT_ID?:string;STENMONT_API_KEY?:string;STENMONT_WEBHOOK_SECRET?:string;RAZORPAY_KEY_ID?:string;RAZORPAY_KEY_SECRET?:string;RAZORPAY_WEBHOOK_SECRET?:string};
 const json=(error:string,status:number)=>Response.json({error},{status,headers:{'cache-control':'private, no-store'}});
 export function testMode(env:ShopEnv){return ['staging','local'].includes(env.ENVIRONMENT)&&env.RAZORPAY_KEY_ID?.startsWith(['rzp','test',''].join('_'))&&!!env.RAZORPAY_KEY_SECRET;}
 export async function boundedText(request:Request,limit:number){
