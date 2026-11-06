@@ -14,7 +14,7 @@ The initial dependency commit contains the generated pnpm lockfile alongside the
 
 Proposed hostname: `demo-shop-staging.stenmont.com`. Proposed Worker: `stenmont-demo-shop-staging`. The config has no production environment and disables workers.dev. The all-zero D1 id is deliberately undeployable until the lead creates a **staging-only** D1 database and records its public database id.
 
-1. Create the staging D1 database `stenmont-demo-shop-staging`, update only `env.staging.d1_databases[0].database_id`, and apply `0001_shop.sql` using `wrangler d1 migrations apply DB --remote --env staging`.
+1. Create the staging D1 database `stenmont-demo-shop-staging`, update only `env.staging.d1_databases[0].database_id`, and apply migrations including `0001_shop.sql` and `0002_shop_limits.sql` using `wrangler d1 migrations apply DB --remote --env staging`.
 2. Prepare the Worker, then sir configures `RAZORPAY_KEY_ID`, `RAZORPAY_KEY_SECRET`, `RAZORPAY_WEBHOOK_SECRET` using Cloudflare Secrets. Never place values in chat, source, `.env`, logs or command arguments. Only test-mode keys are accepted. The Checkout widget necessarily receives the **public key id**, never the key secret or webhook secret.
 3. Build the adapter with `pnpm build:cf`; deploy only with explicit `--env staging`. Tell sir before deploying. The public GitHub repo `stenmont-demo-shop` requires sir's separate approval; no remote exists here.
 4. In Razorpay's test configuration, set `https://demo-shop-staging.stenmont.com/api/webhooks/razorpay` for `payment.captured`, with its separately configured webhook secret. Confirm automatic capture in test settings. An authorized but uncaptured payment is deliberately not treated as paid.
@@ -31,7 +31,7 @@ Cloudflare's current docs recommend vinext (beta) for new projects. This applica
 
 ## Known limits
 
-Local browser verification covered catalogue, variant selection and basket at1440and390; six screenshots were viewed. No live Razorpay call, real webhook delivery, Cloudflare deployment, external account/repo creation, Shopify migration or Connect/OAuth install is claimed. Pending stock is retained conservatively after an uncertain provider send; an operator recovery/expiry workflow is required before broad use. Order creation and webhook API abuse limits need review before opening test checkout widely. Product stock is seeded demo stock, not a warehouse integration. No real shipping, fulfilment, refund system or production mode exists.
+Local browser verification covered catalogue, variant selection and basket at1440and390; six screenshots were viewed. No live Razorpay call, real webhook delivery, Cloudflare deployment, external account/repo creation, Shopify migration or Connect/OAuth install is claimed. Pending stock is retained conservatively after an uncertain provider send; an operator recovery/expiry workflow is required before broad use. New checkout creation is off until CHECKOUT_ENABLED=yes; setting credentials alone never opens it. Atomic owner/IP order caps and IP session caps are documented in docs/GUARDS.md. Signed webhook delivery is not subjected to these checkout caps. Product stock is seeded demo stock, not a warehouse integration. No real shipping, fulfilment, refund system or production mode exists.
 
 ## Primary references checked 2026-11-06
 
