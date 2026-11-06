@@ -1,6 +1,7 @@
 import { quote, fingerprint, verifySignature, verifyCaptured } from './commerce.ts';
 import type { OrderStore, Database } from './orders.ts';
-export type ShopEnv={ENVIRONMENT:string;DB:Database;RAZORPAY_KEY_ID?:string;RAZORPAY_KEY_SECRET?:string;RAZORPAY_WEBHOOK_SECRET?:string};
+import { RateLimitError,requestIp } from './guards.ts';
+export type ShopEnv={ENVIRONMENT:string;DB:Database;CHECKOUT_ENABLED?:string;RAZORPAY_KEY_ID?:string;RAZORPAY_KEY_SECRET?:string;RAZORPAY_WEBHOOK_SECRET?:string};
 const json=(error:string,status:number)=>Response.json({error},{status,headers:{'cache-control':'private, no-store'}});
 export function testMode(env:ShopEnv){return ['staging','local'].includes(env.ENVIRONMENT)&&env.RAZORPAY_KEY_ID?.startsWith(['rzp','test',''].join('_'))&&!!env.RAZORPAY_KEY_SECRET;}
 export async function boundedText(request:Request,limit:number){
@@ -10,10 +11,10 @@ export async function boundedText(request:Request,limit:number){
 export async function startCheckout(request:Request,owner:string|null,env:ShopEnv,store:OrderStore,fetcher:typeof fetch=fetch){
  if(request.headers.get('origin')!==new URL(request.url).origin)return json('Checkout must start from this shop.',403);
  if(!owner)return json('Open your basket again to start a private session.',401);
- if(!testMode(env))return json('Razorpay test checkout is not configured. No payment was taken.',503);
+ if(env.CHECKOUT_ENABLED!=='yes'||!testMode(env))return json('Razorpay test checkout is not configured. No payment was taken.',503);
  let data:any;try{data=JSON.parse(await boundedText(request,8000));}catch{return json('Invalid checkout body.',400);}
  if(!data||Object.keys(data).sort().join(',')!=='items,key'||!/^\w{8}-\w{4}-4\w{3}-[89ab]\w{3}-\w{12}$/.test(data.key))return json('Invalid checkout key.',400);
- let order;try{const q=quote(data.items);order=await store.create(owner,data.key,await fingerprint(q),q);}catch{return json('Basket unavailable or checkout key belongs to a different basket.',409);}
+ let order;try{const q=quote(data.items);order=await store.create(owner,data.key,await fingerprint(q),q,{ip:await requestIp(request,env.ENVIRONMENT),now:new Date()});}catch(e){if(e instanceof RateLimitError)return json(e.message,429);return json('Basket unavailable or checkout key belongs to a different basket.',409);}
  if(order.status==='paid')return Response.json({id:order.id,status:'paid'});
  const response=(providerOrderId:string)=>Response.json({id:order.id,keyId:env.RAZORPAY_KEY_ID,providerOrderId,amount:order.amount,currency:order.currency,status:'awaiting_payment'},{headers:{'cache-control':'private, no-store'}});
  if(order.providerOrderId)return response(order.providerOrderId);
