@@ -11,3 +11,9 @@ Outbound fetch is wrapped so the Worker global remains its native receiver. A na
 Failure responses include sanitized diagnostics: API boundary stage, HTTP status and an allowlisted API code, or a fixed exception category. They never include credentials, request/response bodies, full signatures or raw exception text. Unknown sends remain held. If lookup fails, inspect those safe fields; do not repeat invoice creation.
 
 Local verification:36tests and TypeScript passed. No new browser, provider call, deploy or push was performed by the implementation agent for this change.
+
+## Confirmed Worker redirect incompatibility
+
+Cloudflare's [Request reference](https://developers.cloudflare.com/workers/runtime-apis/request/) documents only manual/follow support; redirect:error throws TypeError before sending a request. A local Miniflare/workerd probe with this application's compatibility date/flags reproduced exactly that constructor failure, while manual/follow constructed successfully. No credentials or network call were used. The checkout and reconciliation transports now use manual and retain their non2xx rejection, so they never follow an upstream redirect with credentials. Node-only registration tooling keeps its supported error mode.
+
+This is a confirmed runtime incompatibility in the earlier source. The lead must still verify the deployed read-only reconciliation before reporting live recovery. No new order/invoice or database edit is needed.

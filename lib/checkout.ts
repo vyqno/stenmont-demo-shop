@@ -24,7 +24,7 @@ export async function startCheckout(request:Request,owner:string|null,env:ShopEn
  if(order.providerOrderId)return response(order.providerOrderId);
  if(!await store.claimCreation(order.id))return Response.json({id:order.id,status:'submitting',error:'Checkout creation is pending. Open your order; do not create another.'},{status:202});
  try{
-  const r=await fetcher('https://api.razorpay.com/v1/orders',{method:'POST',redirect:'error',signal:AbortSignal.timeout(12000),headers:{authorization:`Basic ${btoa(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`)}`,'content-type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,receipt:order.id,partial_payment:false})});
+  const r=await fetcher('https://api.razorpay.com/v1/orders',{method:'POST',redirect:'manual',signal:AbortSignal.timeout(12000),headers:{authorization:`Basic ${btoa(`${env.RAZORPAY_KEY_ID}:${env.RAZORPAY_KEY_SECRET}`)}`,'content-type':'application/json'},body:JSON.stringify({amount:order.amount,currency:order.currency,receipt:order.id,partial_payment:false})});
   if(!r.ok)throw Error('Provider refused');const p:any=await r.json();
   if(typeof p.id!=='string'||!p.id||p.amount!==order.amount||p.currency!==order.currency)throw Error('Provider mismatch');
   await store.finishCreation(order.id,p.id);return response(p.id);

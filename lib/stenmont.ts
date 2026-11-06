@@ -19,7 +19,7 @@ export async function createStenmontInvoice(order:Order,env:ShopEnv,store:OrderS
  if(!await store.claimCreation(order.id))return failure(order.id,'Checkout is pending reconciliation. Open this order; do not create another.',202);
  let stage:'api_fetch'|'binding_write'='api_fetch';
  try{
-  const r=await fetcher(env.STENMONT_API_URL+'/v1/invoices',{method:'POST',redirect:'error',signal:AbortSignal.timeout(60000),headers:{authorization:`Bearer ${env.STENMONT_API_KEY}`,'content-type':'application/json','idempotency-key':order.id},body:JSON.stringify({amount:decimalAmount(order.amount),successUrl:`https://demo-shop-staging.stenmont.com/orders/${order.id}`,cancelUrl:`https://demo-shop-staging.stenmont.com/orders/${order.id}`,metadata:{order:order.id,merchant:env.STENMONT_MERCHANT_ID}})});
+  const r=await fetcher(env.STENMONT_API_URL+'/v1/invoices',{method:'POST',redirect:'manual',signal:AbortSignal.timeout(60000),headers:{authorization:`Bearer ${env.STENMONT_API_KEY}`,'content-type':'application/json','idempotency-key':order.id},body:JSON.stringify({amount:decimalAmount(order.amount),successUrl:`https://demo-shop-staging.stenmont.com/orders/${order.id}`,cancelUrl:`https://demo-shop-staging.stenmont.com/orders/${order.id}`,metadata:{order:order.id,merchant:env.STENMONT_MERCHANT_ID}})});
   const p:any=await r.json().catch(()=>null);
   if(r.status===403&&p?.error?.code==='payments_paused'&&await store.rearmCreation(order.id))return Response.json({id:order.id,status:'creating',retryable:true,error:'Payments are temporarily unavailable.'},{status:403,headers:{'cache-control':'private, no-store'}});
   if(!r.ok)return failure(order.id,r.status===403&&p?.error?.code==='payments_paused'?'Payments are temporarily unavailable.':'Invoice creation could not be confirmed. Open this order before retrying.',r.status===403?403:502,httpDiagnostic(r,p));
@@ -61,7 +61,7 @@ export async function reconcileStenmontInvoice(order:Order,invoiceId:string,env:
  if(order.status!=='submitting')return failure(order.id,'This order is not held for reconciliation.',409);
  let stage:'api_fetch'|'binding_write'='api_fetch';
  try{
-  const response=await fetcher(env.STENMONT_API_URL+'/v1/invoices/'+invoiceId,{method:'GET',redirect:'error',signal:AbortSignal.timeout(15000),headers:{authorization:`Bearer ${env.STENMONT_API_KEY}`}});
+  const response=await fetcher(env.STENMONT_API_URL+'/v1/invoices/'+invoiceId,{method:'GET',redirect:'manual',signal:AbortSignal.timeout(15000),headers:{authorization:`Bearer ${env.STENMONT_API_KEY}`}});
   const invoice:any=await response.json().catch(()=>null);if(!response.ok)return failure(order.id,'Existing invoice lookup failed.',502,httpDiagnostic(response,invoice));
   const expectedReturn=`https://demo-shop-staging.stenmont.com/orders/${order.id}`;
   let valid=false;try{valid=invoice?.id===invoiceId&&invoice?.metadata?.order===order.id&&invoice?.metadata?.merchant===env.STENMONT_MERCHANT_ID&&invoice?.currency==='USDT'&&decimalUnits(invoice.amount)===BigInt(order.amount)&&['open','partially_paid','paid'].includes(invoice.status)&&invoice.successUrl===expectedReturn&&(!invoice.cancelUrl||invoice.cancelUrl===expectedReturn)&&invoice.payUrl===`https://app-staging.stenmont.com/pay/${invoiceId}`;}catch{}
