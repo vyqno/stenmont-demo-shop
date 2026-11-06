@@ -2,7 +2,7 @@
 
 A separate, realistic stationery merchant for the Stenmont staging installation demo. Six fictional products, ten variants, original vector scenes, a persistent basket, server-priced INR checkout, stock reservations and private order receipts.
 
-**Test mode only. Nothing ships. No real payments or Stenmont installation have been demonstrated yet.**
+**Test mode only. Nothing ships. No real payment or completed Connect4/4 installation has been demonstrated by this coding agent yet.**
 
 ## Run and verify
 
@@ -29,9 +29,13 @@ Cloudflare's current docs recommend vinext (beta) for new projects. This applica
 - Only a raw-body HMAC-valid `payment.captured` webhook with the stored provider order id, exact integer amount and INR currency can mark the order paid. Callback navigation and query parameters have no authority. Event replay is idempotent; a second payment id cannot replace the first.
 - A browser-only order list is a convenience, not authentication. No addresses, phone numbers or real customer emails are collected.
 
+## Stenmont installation
+
+A separate USDT test rail is now implemented from the actual copied merchant Connect prompt. See [docs/STENMONT-INSTALL.md](docs/STENMONT-INSTALL.md) for price books, migration0003, configuration, signature checks and pending live evidence. Existing INR Razorpay checkout and receipts are preserved.
+
 ## Known limits
 
-Local browser verification covered catalogue, variant selection and basket at1440and390; six screenshots were viewed. No live Razorpay call, real webhook delivery, Cloudflare deployment, external account/repo creation, Shopify migration or Connect/OAuth install is claimed. Pending stock is retained conservatively after an uncertain provider send; an operator recovery/expiry workflow is required before broad use. New checkout creation is off until CHECKOUT_ENABLED=yes; setting credentials alone never opens it. Atomic owner/IP order caps and IP session caps are documented in docs/GUARDS.md. Signed webhook delivery is not subjected to these checkout caps. Product stock is seeded demo stock, not a warehouse integration. No real shipping, fulfilment, refund system or production mode exists.
+Local browser verification covered catalogue, variant selection and basket at1440and390; six screenshots were viewed. This coding agent made no live Razorpay call, real webhook delivery, Cloudflare deployment, external account/repo creation or Shopify migration. Local Stenmont implementation is complete enough for review; actual Connect/OAuth/payment evidence is still pending with the lead. Pending stock is retained conservatively after an uncertain provider send; an operator recovery/expiry workflow is required before broad use. New checkout creation is off until CHECKOUT_ENABLED=yes; setting credentials alone never opens it. Atomic owner/IP order caps and IP session caps are documented in docs/GUARDS.md. Signed webhook delivery is not subjected to these checkout caps. Product stock is seeded demo stock, not a warehouse integration. No real shipping, fulfilment, refund system or production mode exists.
 
 ## Primary references checked 2026-11-06
 
