@@ -1,0 +1,18 @@
+{
+  "$schema":"node_modules/wrangler/config-schema.json",
+  "name":"stenmont-demo-shop-local",
+  "main":".open-next/worker.js",
+  "compatibility_date":"2026-11-01",
+  "compatibility_flags":["nodejs_compat","global_fetch_strictly_public"],
+  "workers_dev":false,
+  "assets":{"directory":".open-next/assets","binding":"ASSETS"},
+  "vars":{"ENVIRONMENT":"local"},
+  "env":{"staging":{
+    "name":"stenmont-demo-shop-staging",
+    "workers_dev":false,
+    "routes":[{"pattern":"demo-shop-staging.stenmont.com","custom_domain":true}],
+    "assets":{"directory":".open-next/assets","binding":"ASSETS"},
+    "vars":{"ENVIRONMENT":"staging"},
+    "d1_databases":[{"binding":"DB","database_name":"stenmont-demo-shop-staging","database_id":"00000000-0000-0000-0000-000000000000","migrations_dir":"migrations"}]
+  }}
+}
