@@ -15,6 +15,7 @@ export async function createStenmontInvoice(order:Order,env:ShopEnv,store:OrderS
  try{
   const r=await fetcher(env.STENMONT_API_URL+'/v1/invoices',{method:'POST',redirect:'error',signal:AbortSignal.timeout(60000),headers:{authorization:`Bearer ${env.STENMONT_API_KEY}`,'content-type':'application/json','idempotency-key':order.id},body:JSON.stringify({amount:decimalAmount(order.amount),successUrl:`https://demo-shop-staging.stenmont.com/orders/${order.id}`,cancelUrl:`https://demo-shop-staging.stenmont.com/orders/${order.id}`,metadata:{order:order.id,merchant:env.STENMONT_MERCHANT_ID}})});
   const p:any=await r.json().catch(()=>null);
+  if(r.status===403&&p?.error?.code==='payments_paused'&&await store.rearmCreation(order.id))return Response.json({id:order.id,status:'creating',retryable:true,error:'Payments are temporarily unavailable.'},{status:403,headers:{'cache-control':'private, no-store'}});
   if(!r.ok)return failure(order.id,r.status===403&&p?.error?.code==='payments_paused'?'Payments are temporarily unavailable.':'Invoice creation could not be confirmed. Open this order before retrying.',r.status===403?403:502);
   if(!/^0x[0-9a-fA-F]{64}$/.test(p?.id??'')||p?.payUrl!==`https://app-staging.stenmont.com/pay/${p.id}`)throw Error('Invalid checkout response');
   await store.finishStenmontCreation(order.id,p.id,p.payUrl,env.STENMONT_MERCHANT_ID!);

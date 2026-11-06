@@ -5,7 +5,7 @@ import { products } from '../../lib/catalogue';
 import { readCart,saveCart,type CartItem } from '../../lib/cart';
 import { displayAmount,usdtUnits,type Rail } from '../../lib/pricebook';
 import { ProductArt } from '../ProductArt';
-type Checkout={id:string;keyId:string;providerOrderId:string;amount:number;currency:string;status:string;rail?:Rail;payUrl?:string};
+type Checkout={id:string;keyId:string;providerOrderId:string;amount:number;currency:string;status:string;rail?:Rail;payUrl?:string;retryable?:boolean};
 declare global {interface Window {Razorpay?:new(options:Record<string,unknown>)=>{open():void};}}
 function loadCheckout(){if(window.Razorpay)return Promise.resolve();return new Promise<void>((resolve,reject)=>{const script=document.createElement('script');script.src='https://checkout.razorpay.com/v1/checkout.js';script.onload=()=>resolve();script.onerror=()=>reject(Error('Could not load the test checkout.'));document.body.append(script);});}
 export default function Basket(){
@@ -21,7 +21,7 @@ export default function Basket(){
   const key=saved?.fingerprint===fingerprint?saved.key:crypto.randomUUID();sessionStorage.setItem('fieldwork.checkout',JSON.stringify({fingerprint,key}));
   const response=await fetch('/api/checkout',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({items,key,rail})});const data=await response.json() as Checkout&{error?:string};
   if(data.id){const orders=JSON.parse(localStorage.getItem('fieldwork.orders')??'[]');if(!orders.includes(data.id))localStorage.setItem('fieldwork.orders',JSON.stringify([...orders,data.id]));}
-  if(!response.ok||response.status===202){if(data.id){setPendingOrder(data.id);sessionStorage.setItem('fieldwork.pending-order',data.id);}throw Error(data.error??'Checkout could not start.');}
+  if(!response.ok||response.status===202){if(data.id&&!data.retryable){setPendingOrder(data.id);sessionStorage.setItem('fieldwork.pending-order',data.id);}throw Error(data.error??'Checkout could not start.');}
   if(data.status==='paid'){location.assign(`/orders/${data.id}`);return;}
   if(data.rail==='stenmont'&&data.payUrl){location.assign(data.payUrl);return;}
   await loadCheckout();if(!window.Razorpay)throw Error('Test checkout unavailable.');

@@ -19,6 +19,7 @@ export class OrderStore {
   if(!row||(row.fingerprint!==fingerprint&&!legacy))throw Error('This checkout key belongs to a different basket.');
   return view(row);
  }
+ async rearmCreation(id:string){return (await this.db.prepare("UPDATE orders SET status='creating' WHERE id=? AND rail='stenmont' AND status='submitting' AND invoice_id IS NULL AND provider_order_id IS NULL").bind(id).run()).meta.changes===1;}
  async finishStenmontCreation(id:string,invoiceId:string,payUrl:string,merchantId:string){const r=await this.db.prepare("UPDATE orders SET invoice_id=?,pay_url=?,merchant_id=?,status='awaiting_payment' WHERE id=? AND rail='stenmont' AND status='submitting' AND invoice_id IS NULL").bind(invoiceId,payUrl,merchantId,id).run();if(r.meta.changes!==1)throw Error('Invoice binding was not stored.');}
  async byId(id:string){const row=await this.db.prepare('SELECT * FROM orders WHERE id=?').bind(id).first();return row?view(row):null;}
  async get(id:string,owner:string){const row=await this.db.prepare('SELECT * FROM orders WHERE id=? AND owner_hash=?').bind(id,owner).first();return row?view(row):null;}

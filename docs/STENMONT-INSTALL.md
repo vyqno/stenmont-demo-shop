@@ -10,7 +10,7 @@ The new Stenmont option posts to the existing server checkout route, uses a sepa
 
 A server-generated order UUID is the invoice creation Idempotency-Key. The saved cart key is owner-scoped and bound to its quote including rail, currency and prices. Changing rails with that same key conflicts; it cannot change an existing order's rail. Legacy Razorpay fingerprint replays remain accepted only for the unchanged INR quote. Migration0003 copies existing orders and adds rail/invoice fields without changing old receipts or their amounts.
 
-Creation allows60seconds for chain confirmation. A saved invoice and pay URL are reused; an uncertain send remains submitting and never starts a replacement invoice automatically. Early paid webhooks return409 until the invoice binding exists. A403payments_paused response shows “Payments are temporarily unavailable” and stops checkout.
+Creation allows60seconds for chain confirmation. A saved invoice and pay URL are reused; an uncertain send remains submitting and never starts a replacement invoice automatically. Early paid webhooks return409 until the invoice binding exists. A403payments_paused response shows “Payments are temporarily unavailable” and stops the current attempt. Because that API refusal occurs before invoice creation/idempotency reservation, only that known refusal rearms the same saved order for a later manual retry after unpause. Unknown sends,5xx and invalid responses stay held. No stock or admission counter is repeated.
 
 ## Configuration, lead only
 
