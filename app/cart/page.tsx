@@ -20,7 +20,7 @@ export default function Basket(){
   const fingerprint=JSON.stringify(items);let saved:any;try{saved=JSON.parse(sessionStorage.getItem('fieldwork.checkout')??'null');}catch{}
   const key=saved?.fingerprint===fingerprint?saved.key:crypto.randomUUID();sessionStorage.setItem('fieldwork.checkout',JSON.stringify({fingerprint,key}));
   const response=await fetch('/api/checkout',{method:'POST',credentials:'same-origin',headers:{'content-type':'application/json'},body:JSON.stringify({items,key,rail})});const data=await response.json() as Checkout&{error?:string};
-  if(data.id){const orders=JSON.parse(localStorage.getItem('fieldwork.orders')??'[]');if(!orders.includes(data.id))localStorage.setItem('fieldwork.orders',JSON.stringify([...orders,data.id]));}
+  if(data.id){try{sessionStorage.setItem('fieldwork.checkout',JSON.stringify({fingerprint,key,orderId:data.id}));}catch{}const orders=JSON.parse(localStorage.getItem('fieldwork.orders')??'[]');if(!orders.includes(data.id))localStorage.setItem('fieldwork.orders',JSON.stringify([...orders,data.id]));}
   if(!response.ok||response.status===202){if(data.id&&!data.retryable){setPendingOrder(data.id);sessionStorage.setItem('fieldwork.pending-order',data.id);}throw Error(data.error??'Checkout could not start.');}
   if(data.status==='paid'){location.assign(`/orders/${data.id}`);return;}
   if(data.rail==='stenmont'&&data.payUrl){location.assign(data.payUrl);return;}
