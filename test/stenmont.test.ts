@@ -30,3 +30,15 @@ test('migration preserves paid Razorpay receipts and their session ownership',()
  for(const f of ['0002_shop_limits.sql','0003_stenmont_orders.sql'])sql.exec(readFileSync(new URL('../migrations/'+f,import.meta.url),'utf8'));
  const row:any=sql.prepare('SELECT * FROM orders WHERE id=?').get('legacy');assert.equal(row.rail,'razorpay');assert.equal(row.currency,'INR');assert.equal(row.status,'paid');assert.equal(row.payment_id,'old-payment');assert.equal(row.owner_hash,'owner');assert.equal(row.amount,120000);assert.ok(sql.prepare('SELECT owner_hash FROM shop_sessions WHERE owner_hash=?').get('owner'));
 });
+test('the shared HTTP checkout dispatches the selected USDT rail and rejects browser price fields',async()=>{
+ const { startCheckout }=await import('../lib/checkout.ts');const store=database();let calls=0;const transport:typeof fetch=async()=>{calls++;return Response.json({id:invoiceId,payUrl:`https://app-staging.stenmont.com/pay/${invoiceId}`});};
+ const req=(extra:Record<string,unknown>={})=>new Request('https://demo-shop-staging.stenmont.com/api/checkout',{method:'POST',headers:{origin:'https://demo-shop-staging.stenmont.com','cf-connecting-ip':'203.0.113.5'},body:JSON.stringify({items:[{sku:'folio-a5-ink',quantity:1}],key:'12345678-1234-4123-8123-123456789abc',rail:'stenmont',...extra})});
+ assert.equal((await startCheckout(req({amount:'0.01'}),'owner',env,store,transport)).status,400);assert.equal(calls,0);
+ assert.equal((await startCheckout(req(),'owner',{...env,STENMONT_CHECKOUT_ENABLED:undefined},store,transport)).status,503);assert.equal(calls,0);
+ const response=await startCheckout(req(),'owner',env,store,transport);assert.equal(response.status,200);const data=await response.json();assert.equal(data.rail,'stenmont');assert.equal(data.amount,1000000);assert.equal(data.invoiceId,invoiceId);assert.equal(calls,1);
+});
+test('an uncertain Stenmont send stays bound to its owned order and is never resent automatically',async()=>{
+ const store=database(),o=await order(store);let calls=0;const lost:typeof fetch=async()=>{calls++;throw Error('fixture receipt timeout');};
+ const first=await createStenmontInvoice(o,env,store,lost);assert.equal(first.status,502);assert.equal((await first.json()).id,o.id);
+ const retry=await createStenmontInvoice((await store.get(o.id,'owner'))!,env,store,lost);assert.equal(retry.status,202);assert.equal((await retry.json()).id,o.id);assert.equal(calls,1);
+});
