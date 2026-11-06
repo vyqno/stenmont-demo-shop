@@ -5,7 +5,7 @@ import { readFileSync } from 'node:fs';
 import { OrderStore } from '../lib/orders.ts';
 import { quote, fingerprint } from '../lib/commerce.ts';
 function database(){
- const sql=new DatabaseSync(':memory:');sql.exec(readFileSync(new URL('../migrations/0001_shop.sql',import.meta.url),'utf8'));
+ const sql=new DatabaseSync(':memory:');for(const f of ['0001_shop.sql','0002_shop_limits.sql','0003_stenmont_orders.sql'])sql.exec(readFileSync(new URL('../migrations/'+f,import.meta.url),'utf8'));
  const db:any={prepare(text:string){let values:any[]=[];return {bind(...v:any[]){values=v;return this;},async first(){return sql.prepare(text).get(...values)??null;},async all(){return {results:sql.prepare(text).all(...values)};},async run(){const r=sql.prepare(text).run(...values);return {meta:{changes:Number(r.changes)}};}};},async batch(stmts:any[]){sql.exec('BEGIN');try{const results=[];for(const s of stmts)results.push(await s.run());sql.exec('COMMIT');return results;}catch(e){sql.exec('ROLLBACK');throw e;}}};
  return new OrderStore(db);
 }

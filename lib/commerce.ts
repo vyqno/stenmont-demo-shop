@@ -1,7 +1,9 @@
 import { products } from './catalogue.ts';
+import { usdtUnits,type Rail } from './pricebook.ts';
 export type Line={sku:string;name:string;variant:string;quantity:number;unitAmount:number};
-export type Quote={lines:Line[];amount:number;currency:'INR'};
-export function quote(input:unknown):Quote {
+export type Quote={lines:Line[];amount:number;currency:'INR'|'USDT';rail:Rail};
+export function quote(input:unknown,rail:Rail='razorpay'):Quote {
+ if(!['razorpay','stenmont'].includes(rail))throw Error('Unknown payment rail');
  if(!Array.isArray(input)||input.length<1||input.length>12)throw Error('Choose between one and twelve items.');
  const counts=new Map<string,number>();
  for(const row of input){
@@ -11,9 +13,9 @@ export function quote(input:unknown):Quote {
  const lines=[...counts].sort(([a],[b])=>a.localeCompare(b)).map(([sku,quantity])=>{
   const product=products.find(p=>p.variants.some(v=>v.sku===sku));const variant=product?.variants.find(v=>v.sku===sku);
   if(!product||!variant||quantity>10||quantity>variant.stock)throw Error('This quantity is unavailable.');
-  return {sku,name:product.name,variant:variant.label,quantity,unitAmount:variant.paise};
+  return {sku,name:product.name,variant:variant.label,quantity,unitAmount:rail==='stenmont'?usdtUnits[sku]!:variant.paise};
  });
- return {lines,amount:lines.reduce((n,l)=>n+l.unitAmount*l.quantity,0),currency:'INR'};
+ return {lines,amount:lines.reduce((n,l)=>n+l.unitAmount*l.quantity,0),currency:rail==='stenmont'?'USDT':'INR',rail};
 }
 const bytes=(s:string)=>new TextEncoder().encode(s);
 export async function hash(s:string){return Array.from(new Uint8Array(await crypto.subtle.digest('SHA-256',bytes(s))),b=>b.toString(16).padStart(2,'0')).join('');}
