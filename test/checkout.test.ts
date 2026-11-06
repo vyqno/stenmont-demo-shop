@@ -14,8 +14,8 @@ test('missing keys, production, live keys, missing owner and foreign origin neve
 });
 test('uncertain provider creation is not retried automatically',async()=>{
  const t=setup();let calls=0;const down:typeof fetch=async()=>{calls++;throw Error('timeout');};
- assert.equal((await startCheckout(request(),'owner',env,t.store,down)).status,502);
- assert.equal((await startCheckout(request(),'owner',env,t.store,down)).status,202);assert.equal(calls,1);
+ const first=await startCheckout(request(),'owner',env,t.store,down);assert.equal(first.status,502);assert.equal((await first.json()).id,'local-order');
+ const retry=await startCheckout(request(),'owner',env,t.store,down);assert.equal(retry.status,202);assert.equal((await retry.json()).id,'local-order');assert.equal(calls,1);
 });
 test('webhook needs signature, exact captured binding and only accepts matching order',async()=>{
  const t=setup();t.current.providerOrderId='provider-order';

@@ -21,7 +21,7 @@ test('inventory reservation and checkout retries are atomic',async()=>{
  await assert.rejects(()=>s.create('owner','overflow',fp,cart));
  assert.equal((await s.create('owner','request-0',fp,cart)).amount,120000);
 });
-test('captured payment replay is a no-op, never changes another order and does not double fulfill',async()=>{
+test('captured payment replay is a no-op, never changes another order and does not replace a recorded payment',async()=>{
  const s=database(),fp=await fingerprint(cart),a=await s.create('owner','a',fp,cart),b=await s.create('owner','b',fp,cart);
  await s.bindProvider(a.id,'provider-a');await s.bindProvider(b.id,'provider-b');
  assert.equal(await s.capture(a.id,'provider-a','payment-a','event-a'),true);
